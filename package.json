@@ -1,0 +1,27 @@
+{
+    "name": "helloworld",
+    "displayName": "HelloPresentation",
+    "version": "1.0.0",
+    "description": "This is a demo implementation of an cordova app that uses the cordova-presentation-plugin",
+    "main": "index.js",
+    "repository": "https://github.com/mathiasmoeller/cordova-presentation-plugin-demogapp",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Mathias Möller, Lorenzo Toso, Vincent Deuschle",
+    "license": "MIT",
+    "dependencies": {
+        "cordova-android": "^6.2.3",
+        "cordova-plugin-whitelist": "^1.3.2",
+        "de.fhg.fokus.famium.presentation": "git+https://github.com/mathiasmoeller/cordova-presentation-plugin-1UA.git"
+    },
+    "cordova": {
+        "plugins": {
+            "cordova-plugin-whitelist": {},
+            "de.fhg.fokus.famium.presentation": {}
+        },
+        "platforms": [
+            "android"
+        ]
+    }
+}

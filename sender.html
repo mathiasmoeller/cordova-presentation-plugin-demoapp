@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="format-detection" content="telephone=no"/>
+  <meta name="viewport"
+        content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height"/>
+  <link rel="stylesheet" type="text/css" href="index.css"/>
+  <meta name="msapplication-tap-highlight" content="no"/>
+  <title>Hello Presentation</title>
+</head>
+<body>
+
+<button id="presentBtn" style="display: none;">Present</button>
+<button id="disconnectBtn" style="display: none;">Disconnect</button>
+<button id="stopBtn" style="display: none;">Stop</button>
+<button id="reconnectBtn" style="display: none;">Reconnect</button>
+<button id="sendBtn" style="display: none;">Send</button>
+<script>
+
+  // EXAMPLE 1 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  document.addEventListener('deviceready', initialize, false);
+
+  // The Present button is visible if at least one presentation display is available
+  var presentBtn = document.getElementById("presentBtn");
+  // It is also possible to use relative presentation URL e.g. "presentation.html"
+  var presUrls = ["receiver.html"];
+  // show or hide present button depending on display availability
+  var handleAvailabilityChange = function(available) {
+    presentBtn.style.display = available ? "inline" : "none";
+  };
+
+  var request;
+  function initialize() {
+    // Promise is resolved as soon as the presentation display availability is
+    // known.
+    request = new PresentationRequest(presUrls);
+    request.getAvailability().then(function(availability) {
+      // availability.value may be kept up-to-date by the controlling UA as long
+      // as the availability object is alive. It is advised for the Web developers
+      // to discard the object as soon as it's not needed.
+      handleAvailabilityChange(availability.value);
+      availability.onchange = function() {
+        handleAvailabilityChange(availability.value);
+      };
+    }).catch(function() {
+      // Availability monitoring is not supported by the platform, so discovery of
+      // presentation displays will happen only after request.start() is called.
+      // Pretend the devices are available for simplicity; or, one could implement
+      // a third state for the button.
+      handleAvailabilityChange(true);
+    });
+  }
+
+  // EXAMPLE 2 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  presentBtn.onclick = function() {
+    // Start new presentation.
+    request.start()
+      .then(setConnection);
+    // The connection to the presentation will be passed to setConnection on
+    // success.
+    // Otherwise, the user canceled the selection dialog or no screens were
+    // found.
+  };
+
+  // EXAMPLE 3 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  var reconnect = function() {
+    // read presId from localStorage if exists
+    var presId = localStorage["presId"];
+    // presId is mandatory when reconnecting to a presentation.
+    if (!!presId && !!request) {
+      request.reconnect(presId)
+      // The new connection to the presentation will be passed to
+      // setConnection on success.
+        .then(setConnection);
+      // No connection found for presUrl and presId, or an error occurred.
+    }
+  };
+  // On navigation of the controller, reconnect automatically.
+  document.addEventListener("DOMContentLoaded", reconnect);
+  // Or allow manual reconnection.
+  const reconnectBtn = document.querySelector("#reconnectBtn");
+  reconnectBtn.onclick = reconnect;
+
+  // EXAMPLE 4 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // to use this example please comment out the initialize function from example 1
+  //  function initialize() {
+  //    navigator.presentation.defaultRequest = new PresentationRequest(presUrls);
+  //    navigator.presentation.defaultRequest.onconnectionavailable = function(evt) {
+  //      handleAvailabilityChange(true);
+  //      setConnection(evt.connection);
+  //    };
+  //    request = navigator.presentation.defaultRequest;
+  //  }
+
+  // EXAMPLE 5 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  var connection;
+
+  // The Disconnect and Stop buttons are visible if there is a connected presentation
+  const stopBtn = document.querySelector("#stopBtn");
+  const disconnectBtn = document.querySelector("#disconnectBtn");
+  const sendBtn = document.querySelector("#sendBtn");
+
+  stopBtn.onclick = function() {
+    connection && connection.terminate();
+  };
+
+  disconnectBtn.onclick = function() {
+    connection && connection.close();
+  };
+
+  function setConnection(newConnection) {
+    // Disconnect from existing presentation, if not attempting to reconnect
+    if (connection && connection != newConnection && connection.state != 'closed') {
+      connection.onclosed = undefined;
+      connection.close();
+    }
+
+    // Set the new connection and save the presentation ID
+    connection = newConnection;
+    localStorage["presId"] = connection.id;
+
+    function showConnectedUI() {
+      // Allow the user to disconnect from or terminate the presentation
+      stopBtn.style.display = "inline";
+      disconnectBtn.style.display = "inline";
+      sendBtn.style.display = "inline";
+      reconnectBtn.style.display = "none";
+    }
+
+    function showDisconnectedUI() {
+      disconnectBtn.style.display = "none";
+      stopBtn.style.display = "none";
+      sendBtn.style.display = "none";
+      reconnectBtn.style.display = localStorage["presId"] ? "inline" : "none";
+    }
+
+    // Monitor the connection state
+    connection.onconnect = function(newConnection) {
+      connection = newConnection;
+      showConnectedUI();
+
+      // Register message handler
+      connection.onmessage = function(message) {
+        console.log('Received message:', message.data);
+      };
+
+      // Send initial message to presentation page
+      connection.send({data: "Say hello"});
+    };
+
+    connection.onclose = function() {
+      connection = null;
+      showDisconnectedUI();
+    };
+
+    connection.onterminate = function() {
+      // Remove presId from localStorage if exists
+      delete localStorage["presId"];
+      connection = null;
+      showDisconnectedUI();
+      initialize();
+    };
+  }
+
+  // EXAMPLE 6 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // example 6 is part of the receiver.html
+
+  // EXAMPLE 7 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  sendBtn.onclick = function() {
+    connection.send({data: {string: '你好，世界!', lang: 'zh-CN'}});
+    connection.send({data: {string: 'こんにちは、世界!', lang: 'ja'}});
+    connection.send({data: {string: '안녕하세요, 세계!', lang: 'ko'}});
+    connection.send({data: {string: 'Hello, world!', lang: 'en-US'}});
+  };
+</script>
+
+<script type="text/javascript" src="cordova.js"></script>
+</body>
+</html>
